@@ -53,13 +53,18 @@ int main()
 
 	KeyExpansion();
 	Cipher();
-
+	
 	printf("\nText after encryption:\n");
 	for(i=0; i<Nk*4; i++)
 	{
 		printf("%02x ",out[i]);
 	}
 	printf("\n\n");
+
+	for(i=0; i<Nk*4; i++)
+	{
+		in[i] = out[i];
+	}
 
 	KeyExpansion();
 	InvCipher();
@@ -220,7 +225,7 @@ void InvSubBytes()
 	int i,j;
 	for(i=0; i<4; i++)
 	{
-		for(j=0; j<4; j++)
+		for(j=0;j<4;j++)
 		{
 			state[i][j] = getInvSBoxValue(state[i][j]);
 
@@ -256,7 +261,7 @@ void ShiftRows()
 void InvShiftRows()
 {
 	unsigned char temp;
-
+	
 	temp=state[1][3];
 	state[1][3]=state[1][2];
 	state[1][2]=state[1][1];
@@ -270,11 +275,11 @@ void InvShiftRows()
 	state[2][1]=state[2][3];
 	state[2][3]=temp;
 
-	temp=state[3][3];
-	state[3][3]=state[3][2];
-	state[3][2]=state[3][1];
-	state[3][1]=state[3][0];
-	state[3][0]=temp;
+	temp=state[3][0];
+	state[3][0]=state[3][1];
+	state[3][1]=state[3][2];
+	state[3][2]=state[3][3];
+	state[3][3]=temp;
 }
 
 // xtime is a macro that finds the product of {02} and the argument to xtime modulo {1b}  
@@ -307,30 +312,24 @@ void MixColumns()
 	}
 }
 
+// Multiplty is a macro used to multiply numbers in the field GF(2^8)
+#define Multiply(x,y) (((y & 1) * x) ^ ((y>>1 & 1) * xtime(x)) ^ ((y>>2 & 1) * xtime(xtime(x))) ^ ((y>>3 & 1) * xtime(xtime(xtime(x)))) ^ ((y>>4 & 1) * xtime(xtime(xtime(xtime(x))))))
+
 void InvMixColumns()
 {
 	int i;
-	unsigned char Tmp, Tm, t;
-	for(i=4; i>0; i--)
+	unsigned char a, b, c, d;
+	for(i=0; i<4; i++)
 	{	
-		t=state[3][i];
-		Tmp = state[3][i] ^ state[2][i] ^ state[1][i] ^ state[0][i];
-
-		Tm = state[3][i] ^ state[1][i]; 
-		Tm = xtime(Tm); 
-		state[3][i] ^= Tm ^ Tmp;
-
-		Tm = state[2][i] ^ state[2][i]; 
-		Tm = xtime(Tm); 
-		state[2][i] ^= Tm ^ Tmp;
-
-		Tm = state[1][i] ^ state[3][i];
-		Tm = xtime(Tm); 
-		state[1][i] ^= Tm ^ Tmp;
-
-		Tm = state[0][i] ^ t; 
-		Tm = xtime(Tm); 
-		state[0][i] ^= Tm ^ Tmp;
+		a = state[0][i];
+		b = state[1][i];
+		c = state[2][i];
+		d = state[3][i];
+				
+		state[0][i] = Multiply(a, 0x0e) ^ Multiply(b, 0x0b) ^ Multiply(c, 0x0d) ^ Multiply(d, 0x09);
+		state[1][i] = Multiply(a, 0x09) ^ Multiply(b, 0x0e) ^ Multiply(c, 0x0b) ^ Multiply(d, 0x0d);
+		state[2][i] = Multiply(a, 0x0d) ^ Multiply(b, 0x09) ^ Multiply(c, 0x0e) ^ Multiply(d, 0x0b);
+		state[3][i] = Multiply(a, 0x0b) ^ Multiply(b, 0x0d) ^ Multiply(c, 0x09) ^ Multiply(d, 0x0e);
 	}
 }
 
@@ -394,8 +393,11 @@ int i, j, round=0;
 	InvSubBytes();
 	AddRoundKey(0);
 	
-	for(i=0; i<4*4; i++)
+	for(i=0; i<4; i++)
 	{
-		out[i] = in[i];
+		for(j=0; j<4; j++)
+		{
+			out[i*4+j]=state[j][i];
+		}
 	}
 }
